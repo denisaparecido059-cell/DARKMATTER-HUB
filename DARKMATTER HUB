@@ -1,0 +1,414 @@
+--==================================================
+-- GTA 5 YAGO | ANDROID + PC FIXED UI
+-- Aimbot + ESP + Infinite Jump + Speed
+--==================================================
+
+-- SERVIÇOS
+local Players = game:GetService("Players")
+local RunService = game:GetService("RunService")
+local UserInputService = game:GetService("UserInputService")
+local Camera = workspace.CurrentCamera
+local LocalPlayer = Players.LocalPlayer
+local TweenService = game:GetService("TweenService")
+local Debris = game:GetService("Debris")
+
+-- CONFIG
+local AIM_PART = "Head"
+local AIM_SMOOTH = 0.6
+
+local SPEED_VALUE = 30
+
+-- ESTADOS
+local AimbotON = false
+local ESPON = false
+local InfiniteJumpON = false
+local SpeedON = false
+local GodModeON = false
+local FlyON = false
+local NoclipON = false
+
+--==================================================
+-- GUI (VERMELHA / NÃO FECHA)
+--==================================================
+local gui = Instance.new("ScreenGui")
+gui.Name = "GTA5YAGO_UI"
+gui.Parent = game.CoreGui
+gui.ResetOnSpawn = false
+gui.IgnoreGuiInset = true
+
+local frame = Instance.new("Frame", gui)
+frame.Size = UDim2.new(0, 350, 0, 450)
+frame.Position = UDim2.new(0.5, -175, 0.5, -225)
+frame.BackgroundColor3 = Color3.fromRGB(120,0,0)
+frame.BorderSizePixel = 0
+frame.Active = true
+frame.BackgroundTransparency = 0.1
+
+-- TÍTULO
+local title = Instance.new("TextLabel", frame)
+title.Size = UDim2.new(1,0,0,40)
+title.BackgroundColor3 = Color3.fromRGB(160,0,0)
+title.Text = "DARKMATTER HUB 🔥"
+title.TextColor3 = Color3.fromRGB(255,255,255)
+title.Font = Enum.Font.GothamBold
+title.TextSize = 30
+
+-- CRÉDITO
+local credit = Instance.new("TextLabel", frame)
+credit.Size = UDim2.new(1,0,0,30)
+credit.Position = UDim2.new(0,0,1,-30)
+credit.Text = "Criador: GTA 5 YAGO"
+credit.TextColor3 = Color3.fromRGB(220,220,220)
+credit.BackgroundTransparency = 1
+credit.Font = Enum.Font.Gotham
+credit.TextSize = 18
+
+--==================================================
+-- DRAG ANDROID + PC
+--==================================================
+local dragging = false
+local dragStart, startPos
+
+frame.InputBegan:Connect(function(input)
+	if input.UserInputType == Enum.UserInputType.MouseButton1
+	or input.UserInputType == Enum.UserInputType.Touch then
+		dragging = true
+		dragStart = input.Position
+		startPos = frame.Position
+	end
+end)
+
+frame.InputEnded:Connect(function(input)
+	if input.UserInputType == Enum.UserInputType.MouseButton1
+	or input.UserInputType == Enum.UserInputType.Touch then
+		dragging = false
+	end
+end)
+
+UserInputService.InputChanged:Connect(function(input)
+	if dragging and (input.UserInputType == Enum.UserInputType.MouseMovement
+	or input.UserInputType == Enum.UserInputType.Touch) then
+		local delta = input.Position - dragStart
+		frame.Position = UDim2.new(
+			startPos.X.Scale,
+			startPos.X.Offset + delta.X,
+			startPos.Y.Scale,
+			startPos.Y.Offset + delta.Y
+		)
+	end
+end)
+
+--==================================================
+-- FUNÇÃO DE BOTÃO
+--==================================================
+local yPos = 50
+local function Button(text)
+	local b = Instance.new("TextButton", frame)
+	b.Size = UDim2.new(0.9,0,0,35)
+	b.Position = UDim2.new(0.05,0,0,yPos)
+	b.BackgroundColor3 = Color3.fromRGB(180,0,0)
+	b.TextColor3 = Color3.fromRGB(255,255,255)
+	b.Font = Enum.Font.GothamBold
+	b.TextSize = 18
+	b.BorderSizePixel = 0
+	b.Text = text
+	yPos = yPos + 40
+	return b
+end
+
+-- BOTÕES PRINCIPAIS
+local btnAimbot = Button("AIMBOT: OFF")
+local btnESP = Button("ESP: OFF")
+local btnJump = Button("PULO INFINITO: OFF")
+local btnSpeed = Button("SPEED: OFF")
+local btnGod = Button("GOD MODE: OFF")
+local btnFly = Button("FLY: OFF")
+local btnNoclip = Button("NOCLIP: OFF")
+
+btnAimbot.MouseButton1Click:Connect(function()
+	AimbotON = not AimbotON
+	btnAimbot.Text = "AIMBOT: " .. (AimbotON and "ON 🔴" or "OFF")
+end)
+
+btnESP.MouseButton1Click:Connect(function()
+	ESPON = not ESPON
+	btnESP.Text = "ESP: " .. (ESPON and "ON 🔴" or "OFF")
+end)
+
+btnJump.MouseButton1Click:Connect(function()
+	InfiniteJumpON = not InfiniteJumpON
+	btnJump.Text = "PULO INFINITO: " .. (InfiniteJumpON and "ON 🔴" or "OFF")
+end)
+
+btnSpeed.MouseButton1Click:Connect(function()
+	SpeedON = not SpeedON
+	btnSpeed.Text = "SPEED: " .. (SpeedON and "ON 🔴" or "OFF")
+	applySpeed()
+end)
+
+btnGod.MouseButton1Click:Connect(function()
+	GodModeON = not GodModeON
+	btnGod.Text = "GOD MODE: " .. (GodModeON and "ON 🔴" or "OFF")
+	if GodModeON then
+		notify("MODO DEUS ATIVADO! 💪")
+	end
+end)
+
+btnFly.MouseButton1Click:Connect(function()
+	FlyON = not FlyON
+	btnFly.Text = "FLY: " .. (FlyON and "ON 🔴" or "OFF")
+	toggleFly()
+end)
+
+btnNoclip.MouseButton1Click:Connect(function()
+	NoclipON = not NoclipON
+	btnNoclip.Text = "NOCLIP: " .. (NoclipON and "ON 🔴" or "OFF")
+end)
+
+-- TELEPORTE PARA JOGADOR
+local btnTeleport = Button("TELEPORT ALEATÓRIO")
+btnTeleport.MouseButton1Click:Connect(function()
+	local alive = {}
+	for _,p in pairs(Players:GetPlayers()) do
+		if p ~= LocalPlayer and p.Character and p.Character:FindFirstChild("HumanoidRootPart") then
+			table.insert(alive, p)
+		end
+	end
+	
+	if #alive > 0 then
+		local target = alive[math.random(1, #alive)]
+		if target.Character then
+			LocalPlayer.Character:SetPrimaryPartCFrame(target.Character.HumanoidRootPart.CFrame + Vector3.new(0,5,0))
+			notify("Teleportado para " .. target.Name)
+		end
+	end
+end)
+
+--==================================================
+-- NOTIFICAÇÃO PERSONALIZADA
+--==================================================
+local function notify(msg)
+	local notification = Instance.new("Frame")
+	notification.Size = UDim2.new(0, 300, 0, 50)
+	notification.Position = UDim2.new(0.5, -150, 0, -50)
+	notification.BackgroundColor3 = Color3.fromRGB(180,0,0)
+	notification.BorderSizePixel = 0
+	notification.Parent = gui
+	
+	local text = Instance.new("TextLabel")
+	text.Size = UDim2.new(1,0,1,0)
+	text.BackgroundTransparency = 1
+	text.Text = msg
+	text.TextColor3 = Color3.fromRGB(255,255,255)
+	text.TextScaled = true
+	text.Font = Enum.Font.GothamBold
+	text.Parent = notification
+	
+	-- ANIMAÇÃO DE ENTRADA
+	local tweenInfo = TweenInfo.new(0.5, Enum.EasingStyle.Back)
+	local tween = TweenService:Create(notification, tweenInfo, {Position = UDim2.new(0.5, -150, 0, 10)})
+	tween:Play()
+	
+	-- REMOVE APÓS 3 SEGUNDOS
+	Debris:AddItem(notification, 3)
+end
+
+--==================================================
+-- AIMBOT FORTE
+--==================================================
+local function closestPlayer()
+	local c, d = nil, math.huge
+	for _, p in pairs(Players:GetPlayers()) do
+		if p ~= LocalPlayer and p.Character and p.Character:FindFirstChild(AIM_PART) then
+			local pos, v = Camera:WorldToViewportPoint(p.Character[AIM_PART].Position)
+			if v then
+				local dist = (Vector2.new(pos.X,pos.Y) -
+					Vector2.new(Camera.ViewportSize.X/2,Camera.ViewportSize.Y/2)).Magnitude
+				if dist < d then
+					d = dist
+					c = p
+				end
+			end
+		end
+	end
+	return c
+end
+
+RunService.RenderStepped:Connect(function()
+	if AimbotON then
+		local t = closestPlayer()
+		if t and t.Character then
+			Camera.CFrame = Camera.CFrame:Lerp(
+				CFrame.new(Camera.CFrame.Position, t.Character[AIM_PART].Position),
+				AIM_SMOOTH == 0 and 1 or AIM_SMOOTH
+			)
+		end
+	end
+end)
+
+--==================================================
+-- ESP BOX + LINHA
+--==================================================
+local function ESP(player)
+	local box = Drawing.new("Square")
+	box.Thickness = 2
+	box.Filled = false
+	box.Color = Color3.fromRGB(255,0,0)
+
+	local line = Drawing.new("Line")
+	line.Thickness = 2
+	line.Color = Color3.fromRGB(0,255,0)
+
+	RunService.RenderStepped:Connect(function()
+		if ESPON and player.Character and player.Character:FindFirstChild("HumanoidRootPart") then
+			local hrp = player.Character.HumanoidRootPart
+			local head = player.Character:FindFirstChild("Head")
+			if head then
+				local pos, vis = Camera:WorldToViewportPoint(hrp.Position)
+				local headPos, _ = Camera:WorldToViewportPoint(head.Position)
+				if vis then
+					local height = math.abs((headPos.Y - pos.Y) * 2)
+					local width = height * 0.6
+					
+					box.Size = Vector2.new(width, height)
+					box.Position = Vector2.new(pos.X - width/2, pos.Y - height/2)
+					box.Visible = true
+					
+					line.From = Vector2.new(Camera.ViewportSize.X/2, Camera.ViewportSize.Y)
+					line.To = Vector2.new(pos.X, pos.Y)
+					line.Visible = true
+				else
+					box.Visible = false
+					line.Visible = false
+				end
+			end
+		else
+			box.Visible = false
+			line.Visible = false
+		end
+	end)
+end
+
+for _,p in pairs(Players:GetPlayers()) do
+	if p ~= LocalPlayer then ESP(p) end
+end
+
+Players.PlayerAdded:Connect(function(p)
+	task.wait(1)
+	ESP(p)
+end)
+
+--==================================================
+-- PULO INFINITO
+--==================================================
+UserInputService.JumpRequest:Connect(function()
+	if InfiniteJumpON and LocalPlayer.Character then
+		local h = LocalPlayer.Character:FindFirstChildOfClass("Humanoid")
+		if h then
+			h:ChangeState(Enum.HumanoidStateType.Jumping)
+		end
+	end
+end)
+
+--==================================================
+-- SPEED (NÃO RESETA)
+--==================================================
+local function applySpeed()
+	if LocalPlayer.Character then
+		local h = LocalPlayer.Character:FindFirstChildOfClass("Humanoid")
+		if h then
+			h.WalkSpeed = SpeedON and SPEED_VALUE or 16
+		end
+	end
+end
+
+LocalPlayer.CharacterAdded:Connect(function()
+	task.wait(1)
+	applySpeed()
+end)
+
+RunService.Heartbeat:Connect(function()
+	if SpeedON then
+		applySpeed()
+	end
+end)
+
+--==================================================
+-- GOD MODE COMPLETO
+--==================================================
+RunService.Heartbeat:Connect(function()
+	if GodModeON and LocalPlayer.Character then
+		local h = LocalPlayer.Character:FindFirstChildOfClass("Humanoid")
+		if h then
+			h.Health = h.MaxHealth
+			
+			-- EFEITO VISUAL
+			for _,v in pairs(LocalPlayer.Character:GetDescendants()) do
+				if v:IsA("BasePart") then
+					v.BrickColor = BrickColor.new("Bright red")
+					v.Material = "Neon"
+				end
+			end
+		end
+	end
+end)
+
+--==================================================
+-- FLY (VOAR)
+--==================================================
+local flyConnection = nil
+local bg, bv
+
+function toggleFly()
+	local char = LocalPlayer.Character
+	if not char then return end
+	local hrp = char:FindFirstChild("HumanoidRootPart")
+	if not hrp then return end
+	
+	if FlyON then
+		bg = Instance.new("BodyGyro", hrp)
+		bv = Instance.new("BodyVelocity", hrp)
+		bg.P = 9e4
+		bg.maxTorque = Vector3.new(9e9,9e9,9e9)
+		bg.cframe = hrp.CFrame
+		bv.maxForce = Vector3.new(9e9,9e9,9e9)
+		
+		flyConnection = RunService.RenderStepped:Connect(function()
+			if FlyON and LocalPlayer.Character and hrp and hrp.Parent then
+				local moveDir = Vector3.new(
+					(UserInputService:IsKeyDown(Enum.KeyCode.D) and 1 or 0) - (UserInputService:IsKeyDown(Enum.KeyCode.A) and 1 or 0),
+					(UserInputService:IsKeyDown(Enum.KeyCode.Space) and 1 or 0) - (UserInputService:IsKeyDown(Enum.KeyCode.LeftControl) and 1 or 0),
+					(UserInputService:IsKeyDown(Enum.KeyCode.W) and 1 or 0) - (UserInputService:IsKeyDown(Enum.KeyCode.S) and 1 or 0)
+				)
+				bv.velocity = Camera.CFrame:VectorToObjectSpace(moveDir) * 60
+				bg.cframe = Camera.CFrame
+			end
+		end)
+	else
+		if flyConnection then
+			flyConnection:Disconnect()
+			flyConnection = nil
+		end
+		if bg and bg.Parent then bg:Destroy() end
+		if bv and bv.Parent then bv:Destroy() end
+	end
+end
+
+--==================================================
+-- NOCLIP (ATRAVESSAR PAREDES)
+--==================================================
+RunService.Stepped:Connect(function()
+	if NoclipON and LocalPlayer.Character then
+		for _,v in pairs(LocalPlayer.Character:GetDescendants()) do
+			if v:IsA("BasePart") then
+				v.CanCollide = false
+			end
+		end
+	end
+end)
+
+--==================================================
+-- INICIAR
+--==================================================
+notify("DarkMatter Hub Carregado! 🔥")
+notify("Bem-vindo, " .. LocalPlayer.Name)
