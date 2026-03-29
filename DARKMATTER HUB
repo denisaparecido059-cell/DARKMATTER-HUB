@@ -1,7 +1,4 @@
---==================================================
--- GTA 5 YAGO | ANDROID + PC FIXED UI
--- Aimbot + ESP + Infinite Jump + Speed
---==================================================
+
 
 -- SERVIÇOS
 local Players = game:GetService("Players")
